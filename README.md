@@ -41,14 +41,14 @@ Clone the repository and link the script into Timewarrior's extensions directory
 
 ```sh
 git clone https://github.com/butzo/timew-tagtable.git
-mkdir -p ~/.local/share/timewarrior/extensions
-ln -s "$PWD/timew-tagtable/tagtable.py" ~/.local/share/timewarrior/extensions/tagtable.py
+mkdir -p ~/.config/timewarrior/extensions
+ln -s "$PWD/timew-tagtable/tagtable.py" ~/.config/timewarrior/extensions/tagtable.py
 ```
 
 A symlink lets you update with `git pull`. If you prefer a plain copy:
 
 ```sh
-install -D -m 755 timew-tagtable/tagtable.py ~/.local/share/timewarrior/extensions/tagtable.py
+install -D -m 755 timew-tagtable/tagtable.py ~/.config/timewarrior/extensions/tagtable.py
 ```
 
 Older installations use `~/.timewarrior/extensions/` instead of the XDG path.
