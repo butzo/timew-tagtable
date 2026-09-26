@@ -5,8 +5,8 @@ A [Timewarrior](https://timewarrior.net) report extension that prints tracked ti
 ```console
 $ timew report tagtable :month
 2026-09-01 - 2026-09-30 (30 days)
-work	uni	thesis
 no data: thesis
+work	uni	thesis
 
 7.75		
 7.00	7.00	
@@ -143,8 +143,8 @@ Other range hints such as `:week` or `:lastweek` work the same way. Timewarrior 
 
 ```
 <first day> - <last day> (<n> days)        range check
-<tag>␉<tag>␉…                              column check
 no data: <tag>, …                          only if a tag has no time
+<tag>␉<tag>␉…                              column check
 copied <n> rows to clipboard               only in copy mode
 
 <value>␉<value>␉…                          one line per day, first day first

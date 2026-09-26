@@ -96,9 +96,9 @@ def main():
     values = "\n".join(rows)
 
     print(f"{first_day} - {last_day} ({len(rows)} days)")
-    print(delim.join(cols))
     if unused:
         print(f"no data: {', '.join(unused)}")
+    print(delim.join(cols))
     if copy:
         try:
             # Detach wl-copy's output: it keeps running to serve the clipboard,
