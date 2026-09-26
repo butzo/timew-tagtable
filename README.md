@@ -89,7 +89,7 @@ Each column is one tag, or several tags joined by `+` whose time is summed: `wor
 - A column with no tracked time in the range is still shown (empty).
 - Every listed tag with no tracked time in the range is named in the header's `no data:` line, including tags inside a `+` group.
 - Tags that are tracked but not in the list are ignored.
-- To include time without any tag, add the pseudo-tag `(untagged)`, on its own or in a group: `thesis+(untagged)`. Quote it on the command line, since the shell interprets parentheses: `'rc.tagtable.tags=work,(untagged)'`.
+- To include time without any tag, add the pseudo-tag `untagged`, on its own or in a group: `thesis+untagged`. A real Timewarrior tag named `untagged` can't be told apart from it and is counted together with untagged time, so don't use that name as a tag.
 - Quote the value if a tag contains spaces: `rc.tagtable.tags="uni,side project"`.
 - Tags containing `+` or `,` cannot be listed.
 

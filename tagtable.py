@@ -25,7 +25,7 @@ import sys
 from collections import defaultdict
 from datetime import datetime, time, timedelta, timezone
 
-UNTAGGED = "(untagged)"
+UNTAGGED = "untagged"
 TAG_JOIN = "+"
 TIMEW_FMT = "%Y%m%dT%H%M%SZ"
 NAMED_DELIMITERS = {"": "\t", "tab": "\t", "\\t": "\t", "space": " "}
