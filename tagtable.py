@@ -9,13 +9,14 @@
 """Timewarrior report: one row per day, one column per tag, decimal hours.
 
 Settings (timewarrior.cfg or rc.<key>=<value> on the command line):
-  tagtable.tags       comma-separated tag list, defines columns and order (required)
+  tagtable.tags       comma-separated columns in order; tags joined by + are summed
+                      into one column, e.g. work,uni+thesis (required)
   tagtable.delimiter  column delimiter; literal string or tab/\\t/space (default: tab)
   tagtable.copy       yes/no; copy value rows to the clipboard via wl-copy (default: no)
 
 Examples:
   timew report tagtable :month
-  timew report tagtable :month rc.tagtable.tags=work,uni rc.tagtable.delimiter=';'
+  timew report tagtable :month rc.tagtable.tags=work,uni+thesis rc.tagtable.delimiter=';'
   timew report tagtable 2026-09-01 - 2026-10-01 rc.tagtable.copy=yes
 """
 import json
@@ -25,6 +26,7 @@ from collections import defaultdict
 from datetime import datetime, time, timedelta, timezone
 
 UNTAGGED = "(untagged)"
+TAG_JOIN = "+"
 TIMEW_FMT = "%Y%m%dT%H%M%SZ"
 NAMED_DELIMITERS = {"": "\t", "tab": "\t", "\\t": "\t", "space": " "}
 TRUE = {"yes", "y", "on", "true", "1"}
@@ -50,7 +52,12 @@ def main():
     config = dict(l.split(": ", 1) for l in header.splitlines() if ": " in l)
     intervals = json.loads(body.strip() or "[]")
 
-    cols = [t.strip().strip('"') for t in config.get("tagtable.tags", "").split(",") if t.strip()]
+    cols = []  # (header label, tags summed into this column)
+    for raw in config.get("tagtable.tags", "").split(","):
+        tags = [t.strip().strip('"') for t in raw.split(TAG_JOIN)]
+        tags = [t for t in tags if t]
+        if tags:
+            cols.append((TAG_JOIN.join(tags), tags))
     if not cols:
         fail("no tags given; set tagtable.tags in timewarrior.cfg or pass rc.tagtable.tags=a,b")
     raw_delim = config.get("tagtable.delimiter", "")
@@ -61,7 +68,9 @@ def main():
     rep_start = parse_utc(config["temp.report.start"]) if config.get("temp.report.start") else None
     rep_end = parse_utc(config["temp.report.end"]) if config.get("temp.report.end") else None
 
-    seconds = defaultdict(float)  # (date, tag) -> seconds
+    seconds = defaultdict(float)  # (date, column index) -> seconds
+    seen_days = set()
+    seen_tags = set()
     for iv in intervals:
         start = parse_utc(iv["start"])
         end = parse_utc(iv["end"]) if "end" in iv else now
@@ -71,15 +80,19 @@ def main():
             end = min(end, rep_end)
         if end <= start:
             continue
-        iv_tags = iv.get("tags") or [UNTAGGED]
+        iv_tags = set(iv.get("tags") or [UNTAGGED])
+        seen_tags |= iv_tags
+        # Once per matching column, however many of its tags the interval has
+        hits = [i for i, (_, tags) in enumerate(cols) if not iv_tags.isdisjoint(tags)]
         cur = start
         while cur < end:  # split at local midnight
             seg_end = min(end, next_midnight(cur))
-            for t in iv_tags:  # full duration under each tag
-                seconds[(cur.date(), t)] += (seg_end - cur).total_seconds()
+            seen_days.add(cur.date())
+            for i in hits:
+                seconds[(cur.date(), i)] += (seg_end - cur).total_seconds()
             cur = seg_end
 
-    seen_days = sorted({d for d, _ in seconds})
+    seen_days = sorted(seen_days)
     first_day = rep_start.date() if rep_start else (seen_days[0] if seen_days else None)
     if first_day is None:
         fail("no range and no data")
@@ -88,17 +101,19 @@ def main():
     rows = []
     day = first_day
     while day <= last_day:
-        cells = [f"{seconds[(day, t)] / 3600:.2f}" if seconds.get((day, t)) else "" for t in cols]
+        cells = [f"{seconds[(day, i)] / 3600:.2f}" if seconds.get((day, i)) else ""
+                 for i in range(len(cols))]
         rows.append(delim.join(cells))
         day += timedelta(days=1)
 
-    unused = [t for t in cols if not any(t == k[1] for k in seconds)]
+    # Per tag, not per column, so a typo inside a group is still reported
+    unused = [t for t in dict.fromkeys(t for _, tags in cols for t in tags) if t not in seen_tags]
     values = "\n".join(rows)
 
     print(f"{first_day} - {last_day} ({len(rows)} days)")
     if unused:
         print(f"no data: {', '.join(unused)}")
-    print(delim.join(cols))
+    print(delim.join(label for label, _ in cols))
     if copy:
         try:
             # Detach wl-copy's output: it keeps running to serve the clipboard,

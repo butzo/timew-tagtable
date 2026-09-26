@@ -23,6 +23,7 @@ The lines above the blank line are a header for you to check the range and colum
 ## Features
 
 - Fixed, user-defined column order, so the layout stays stable from month to month
+- Several tags can be summed into one column
 - Every day of the range appears, even days without tracked time
 - Configurable delimiter (tab by default)
 - Optional copy of the data block to the clipboard (Wayland, `wl-copy`)
@@ -67,26 +68,30 @@ Every setting can be defined in `timewarrior.cfg` as a default, or passed on the
 
 | Setting              | Default | Required | Description                                          |
 |----------------------|---------|----------|------------------------------------------------------|
-| `tagtable.tags`      | –       | yes      | Tags to show as columns, comma-separated, in order   |
+| `tagtable.tags`      | –       | yes      | Columns, comma-separated, in order; `+` sums tags    |
 | `tagtable.delimiter` | tab     | no       | Column delimiter                                     |
 | `tagtable.copy`      | `no`    | no       | Copy the data block to the clipboard                 |
 
 Example `timewarrior.cfg`:
 
 ```ini
-tagtable.tags = work,uni
+tagtable.tags = work,uni+thesis
 tagtable.delimiter = tab
 tagtable.copy = no
 ```
 
 ### `tagtable.tags`
 
-The comma-separated list of tags that become the table's columns. The order of the list is the order of the columns.
+The comma-separated list of the table's columns. The order of the list is the order of the columns.
 
-- A tag in the list with no tracked time in the range still gets its (empty) column and is named in the header's `no data:` line.
+Each column is one tag, or several tags joined by `+` whose time is summed: `work,uni+thesis` gives the columns `work` and `uni+thesis`. An interval counts once toward a column if it carries at least one of the column's tags, so an interval tagged both `uni` and `thesis` is not counted twice.
+
+- A column with no tracked time in the range is still shown (empty).
+- Every listed tag with no tracked time in the range is named in the header's `no data:` line, including tags inside a `+` group.
 - Tags that are tracked but not in the list are ignored.
-- To include time without any tag, add the pseudo-tag `(untagged)` to the list.
+- To include time without any tag, add the pseudo-tag `(untagged)`, on its own or in a group: `thesis+(untagged)`. Quote it on the command line, since the shell interprets parentheses: `'rc.tagtable.tags=work,(untagged)'`.
 - Quote the value if a tag contains spaces: `rc.tagtable.tags="uni,side project"`.
+- Tags containing `+` or `,` cannot be listed.
 
 The report aborts with an error if no tags are configured.
 
@@ -131,6 +136,9 @@ timew report tagtable 2026-09-01 - 2026-10-01
 # Different columns for one run
 timew report tagtable :month rc.tagtable.tags=uni,thesis
 
+# uni and thesis summed into one column
+timew report tagtable :month rc.tagtable.tags=work,uni+thesis
+
 # Semicolon-separated, e.g. for a spreadsheet import
 timew report tagtable :month rc.tagtable.delimiter=';'
 
@@ -161,7 +169,7 @@ copied <n> rows to clipboard               only in copy mode
 
 - **Timezone:** Timewarrior stores UTC. Days are computed in your system's local timezone, DST included.
 - **Midnight:** An interval crossing midnight is split, and each day gets its share.
-- **Multiple tags:** An interval with several listed tags counts its full duration under *each* of them. A row's sum can therefore exceed the time actually tracked.
+- **Multiple tags:** An interval counts its full duration once in *each* column it matches. Within a `+` group it counts only once, but an interval that matches several columns counts in all of them, so a row's sum can exceed the time actually tracked.
 - **Running interval:** An interval that is still open counts up to now.
 - **Range edges:** Intervals are clipped to the report range.
 
