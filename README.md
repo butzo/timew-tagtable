@@ -24,6 +24,7 @@ The lines above the blank line are a header for you to check the range and colum
 
 - Fixed, user-defined column order, so the layout stays stable from month to month
 - Several tags can be summed into one column
+- `*` matches every interval, for a total column
 - Every day of the range appears, even days without tracked time
 - Configurable delimiter (tab by default)
 - Optional copy of the data block to the clipboard (Wayland, `wl-copy`)
@@ -66,11 +67,11 @@ timew extensions
 
 Every setting can be defined in `timewarrior.cfg` as a default, or passed on the command line as `rc.<setting>=<value>`. The command line wins.
 
-| Setting              | Default | Required | Description                                          |
-|----------------------|---------|----------|------------------------------------------------------|
-| `tagtable.tags`      | –       | yes      | Columns, comma-separated, in order; `+` sums tags    |
-| `tagtable.delimiter` | tab     | no       | Column delimiter                                     |
-| `tagtable.copy`      | `no`    | no       | Copy the data block to the clipboard                 |
+| Setting              | Default | Required | Description                                                        |
+|----------------------|---------|----------|--------------------------------------------------------------------|
+| `tagtable.tags`      | –       | yes      | Columns, comma-separated, in order; `+` sums tags, `*` matches all |
+| `tagtable.delimiter` | tab     | no       | Column delimiter                                                   |
+| `tagtable.copy`      | `no`    | no       | Copy the data block to the clipboard                               |
 
 Example `timewarrior.cfg`:
 
@@ -89,9 +90,10 @@ Each column is one tag, or several tags joined by `+` whose time is summed: `wor
 - A column with no tracked time in the range is still shown (empty).
 - Every listed tag with no tracked time in the range is named in the header's `no data:` line, including tags inside a `+` group.
 - Tags that are tracked but not in the list are ignored.
+- The wildcard `*` matches every interval, whatever its tags, including untagged time: `work,uni,*` adds a column with the whole day's tracked time. In a `+` group it makes the group match everything, so `uni+*` is the same column as `*`. It shows up in the `no data:` line only when nothing at all was tracked in the range. Quote it so the shell doesn't expand it to file names: `rc.tagtable.tags='work,*'`.
 - To include time without any tag, add the pseudo-tag `untagged`, on its own or in a group: `thesis+untagged`. A real Timewarrior tag named `untagged` can't be told apart from it and is counted together with untagged time, so don't use that name as a tag.
 - Quote the value if a tag contains spaces: `rc.tagtable.tags="uni,side project"`.
-- Tags containing `+` or `,` cannot be listed.
+- Tags containing `+` or `,` cannot be listed, and a tag literally named `*` can't be matched — `*` is always the wildcard.
 
 The report aborts with an error if no tags are configured.
 
@@ -139,6 +141,9 @@ timew report tagtable :month rc.tagtable.tags=uni,thesis
 # uni and thesis summed into one column
 timew report tagtable :month rc.tagtable.tags=work,uni+thesis
 
+# work, uni, and a total column over all tags
+timew report tagtable :month rc.tagtable.tags='work,uni,*'
+
 # Semicolon-separated, e.g. for a spreadsheet import
 timew report tagtable :month rc.tagtable.delimiter=';'
 
@@ -169,7 +174,7 @@ copied <n> rows to clipboard               only in copy mode
 
 - **Timezone:** Timewarrior stores UTC. Days are computed in your system's local timezone, DST included.
 - **Midnight:** An interval crossing midnight is split, and each day gets its share.
-- **Multiple tags:** An interval counts its full duration once in *each* column it matches. Within a `+` group it counts only once, but an interval that matches several columns counts in all of them, so a row's sum can exceed the time actually tracked.
+- **Multiple tags:** An interval counts its full duration once in *each* column it matches. Within a `+` group it counts only once, but an interval that matches several columns counts in all of them, so a row's sum can exceed the time actually tracked. A `*` column is such a case by design: it holds the day's whole tracked time, so it is a total, not another summand.
 - **Running interval:** An interval that is still open counts up to now.
 - **Range edges:** Intervals are clipped to the report range.
 

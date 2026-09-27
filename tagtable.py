@@ -10,13 +10,15 @@
 
 Settings (timewarrior.cfg or rc.<key>=<value> on the command line):
   tagtable.tags       comma-separated columns in order; tags joined by + are summed
-                      into one column, e.g. work,uni+thesis (required)
+                      into one column, e.g. work,uni+thesis; the tag * matches
+                      every interval (required)
   tagtable.delimiter  column delimiter; literal string or tab/\\t/space (default: tab)
   tagtable.copy       yes/no; copy value rows to the clipboard via wl-copy (default: no)
 
 Examples:
   timew report tagtable :month
   timew report tagtable :month rc.tagtable.tags=work,uni+thesis rc.tagtable.delimiter=';'
+  timew report tagtable :month rc.tagtable.tags="work,uni,*"
   timew report tagtable 2026-09-01 - 2026-10-01 rc.tagtable.copy=yes
 """
 import json
@@ -26,6 +28,7 @@ from collections import defaultdict
 from datetime import datetime, time, timedelta, timezone
 
 UNTAGGED = "untagged"
+WILDCARD = "*"
 TAG_JOIN = "+"
 TIMEW_FMT = "%Y%m%dT%H%M%SZ"
 NAMED_DELIMITERS = {"": "\t", "tab": "\t", "\\t": "\t", "space": " "}
@@ -83,7 +86,8 @@ def main():
         iv_tags = set(iv.get("tags") or [UNTAGGED])
         seen_tags |= iv_tags
         # Once per matching column, however many of its tags the interval has
-        hits = [i for i, (_, tags) in enumerate(cols) if not iv_tags.isdisjoint(tags)]
+        hits = [i for i, (_, tags) in enumerate(cols)
+                if WILDCARD in tags or not iv_tags.isdisjoint(tags)]
         cur = start
         while cur < end:  # split at local midnight
             seg_end = min(end, next_midnight(cur))
@@ -106,8 +110,10 @@ def main():
         rows.append(delim.join(cells))
         day += timedelta(days=1)
 
-    # Per tag, not per column, so a typo inside a group is still reported
-    unused = [t for t in dict.fromkeys(t for _, tags in cols for t in tags) if t not in seen_tags]
+    # Per tag, not per column, so a typo inside a group is still reported;
+    # the wildcard has data as soon as anything at all was tracked
+    used = seen_tags | ({WILDCARD} if seen_tags else set())
+    unused = [t for t in dict.fromkeys(t for _, tags in cols for t in tags) if t not in used]
     values = "\n".join(rows)
 
     print(f"{first_day} - {last_day} ({len(rows)} days)")
